@@ -133,8 +133,15 @@ export default {
         // 步骤 2: 检查 PWA 更新 (30%)
         updateProgress(30, '正在检查更新...', 'refresh')
         const pwaUpdate = usePWAUpdate()
-        // 等待 Service Worker 注册完成
-        await new Promise(resolve => setTimeout(resolve, 1500))
+
+        // 等待 Service Worker 注册完成（最多等待 3 秒）
+        const maxWaitTime = 3000
+        const checkInterval = 100
+        const startTime = Date.now()
+
+        while (!pwaUpdate.registration?.value && (Date.now() - startTime) < maxWaitTime) {
+          await new Promise(resolve => setTimeout(resolve, checkInterval))
+        }
 
         // 手动检查更新（在 splash 页面触发）
         if (pwaUpdate.registration && pwaUpdate.registration.value) {

@@ -543,6 +543,41 @@ async function main() {
     failCount++
   }
 
+  // 更新 src/components/Splash.vue（如果存在）
+  const splashPath = resolve('src/components/Splash.vue')
+  try {
+    let splashContent = readFileSync(splashPath, 'utf-8') // 检查文件是否存在
+    console.log('  更新 src/components/Splash.vue...')
+
+    // 替换所有 your-project 相关的字符串
+    // 1. key.includes('your-project-')
+    splashContent = splashContent.replace(/key\.includes\(['"]your-project-/g, `key.includes('${projectNameSnake}-`)
+
+    // 2. 正则表达式中的 your-project-(\d{8}-\d{4}) - 匹配模式
+    splashContent = splashContent.replace(/your-project-\(\\d\{8\}-\\d\{4\}\)/g, `${projectNameSnake}-(\\d{8}-\\d{4})`)
+
+    // 3. 字符串中的 your-project-(\d{8}-\d{4}) - 实际匹配
+    splashContent = splashContent.replace(/your-project-(\d{8}-\d{4})/g, `${projectNameSnake}-$1`)
+
+    // 4. 正则表达式中的 your-project-[\w-]+
+    splashContent = splashContent.replace(/your-project-\[\\w-\]\+/g, `${projectNameSnake}-[\\w-]+`)
+
+    // 5. 字符串中的 'your-project-'
+    splashContent = splashContent.replace(/['"]your-project-/g, `'${projectNameSnake}-`)
+
+    writeFileSync(splashPath, splashContent, 'utf-8')
+    console.log('  ✅ src/components/Splash.vue 已更新')
+    successCount++
+  } catch (error) {
+    // 文件不存在，跳过
+    if (error.code === 'ENOENT') {
+      // 文件不存在，静默跳过
+    } else {
+      console.log(`  ⚠️  跳过 src/components/Splash.vue: ${error.message}`)
+      failCount++
+    }
+  }
+
   // 如果创建了 GitHub 仓库且用户选择了自动提交，现在执行提交
   if (githubRepoCreated && shouldAutoCommit) {
     try {

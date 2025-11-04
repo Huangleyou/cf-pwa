@@ -53,19 +53,48 @@ try {
   let swContent = readFileSync(SW_PATH, 'utf-8')
 
   // 替换版本号（匹配各种可能的格式）
-  // 匹配: const CACHE_NAME = 'PROJECT_NAME-YYYYMMDD-HHmm'
-  const cacheNamePattern = new RegExp(`const CACHE_NAME\\s*=\\s*['"]${PROJECT_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-[\\w-]+['"]`, 'g')
-  swContent = swContent.replace(
-    cacheNamePattern,
-    `const CACHE_NAME = '${cacheVersion}'`
-  )
+  // 匹配: const CACHE_NAME = 'PROJECT_NAME-YYYYMMDD-HHmm' 或 const CACHE_NAME = `${PROJECT_NAME}-YYYYMMDD-HHmm`
+  const escapedProjectName = PROJECT_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // 匹配字符串字面量格式
+  const cacheNameLiteralPattern = new RegExp(`const CACHE_NAME\\s*=\\s*['"]${escapedProjectName}-[\\w-]+['"]`, 'g')
+  // 匹配模板字符串格式 - 注意：在正则表达式中需要转义反引号和 ${
+  const cacheNameTemplatePattern = /const CACHE_NAME\s*=\s*`\$\{PROJECT_NAME\}-\d{8}-\d{4}`/g
 
-  // 匹配: const RUNTIME_CACHE = 'PROJECT_NAME-runtime-YYYYMMDD-HHmm'
-  const runtimeCachePattern = new RegExp(`const RUNTIME_CACHE\\s*=\\s*['"]${PROJECT_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-runtime-[\\w-]+['"]`, 'g')
-  swContent = swContent.replace(
-    runtimeCachePattern,
-    `const RUNTIME_CACHE = '${PROJECT_NAME}-runtime-${year}${month}${day}-${hours}${minutes}'`
-  )
+  // 先尝试匹配模板字符串格式
+  if (cacheNameTemplatePattern.test(swContent)) {
+    cacheNameTemplatePattern.lastIndex = 0 // 重置 lastIndex
+    swContent = swContent.replace(
+      cacheNameTemplatePattern,
+      `const CACHE_NAME = \`\${PROJECT_NAME}-${year}${month}${day}-${hours}${minutes}\``
+    )
+  } else if (cacheNameLiteralPattern.test(swContent)) {
+    cacheNameLiteralPattern.lastIndex = 0 // 重置 lastIndex
+    // 再尝试匹配字符串字面量格式
+    swContent = swContent.replace(
+      cacheNameLiteralPattern,
+      `const CACHE_NAME = '${cacheVersion}'`
+    )
+  }
+
+  // 匹配: const RUNTIME_CACHE = 'PROJECT_NAME-runtime-YYYYMMDD-HHmm' 或 const RUNTIME_CACHE = `${PROJECT_NAME}-runtime-YYYYMMDD-HHmm`
+  const runtimeCacheLiteralPattern = new RegExp(`const RUNTIME_CACHE\\s*=\\s*['"]${escapedProjectName}-runtime-[\\w-]+['"]`, 'g')
+  const runtimeCacheTemplatePattern = /const RUNTIME_CACHE\s*=\s*`\$\{PROJECT_NAME\}-runtime-\d{8}-\d{4}`/g
+
+  // 先尝试匹配模板字符串格式
+  if (runtimeCacheTemplatePattern.test(swContent)) {
+    runtimeCacheTemplatePattern.lastIndex = 0 // 重置 lastIndex
+    swContent = swContent.replace(
+      runtimeCacheTemplatePattern,
+      `const RUNTIME_CACHE = \`\${PROJECT_NAME}-runtime-${year}${month}${day}-${hours}${minutes}\``
+    )
+  } else if (runtimeCacheLiteralPattern.test(swContent)) {
+    runtimeCacheLiteralPattern.lastIndex = 0 // 重置 lastIndex
+    // 再尝试匹配字符串字面量格式
+    swContent = swContent.replace(
+      runtimeCacheLiteralPattern,
+      `const RUNTIME_CACHE = '${PROJECT_NAME}-runtime-${year}${month}${day}-${hours}${minutes}'`
+    )
+  }
 
   // 写入文件
   writeFileSync(SW_PATH, swContent, 'utf-8')
