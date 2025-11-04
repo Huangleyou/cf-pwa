@@ -13,17 +13,26 @@
 
 ## 🚀 快速开始
 
-### 1. 初始化项目
+### 方式一：从 GitHub 使用（推荐）
 
 ```bash
-# 复制脚手架到新项目目录
-cp -r cf-pwa your-project-name
+# 1. 使用 GitHub CLI 创建新项目（推荐）
+gh repo create your-project-name --template Huangleyou/cf-pwa --clone
 cd your-project-name
 
-# 安装依赖
-npm install
+# 2. 运行初始化脚本（会自动安装依赖）
+npm run init
+```
 
-# 运行初始化脚本（推荐）
+### 方式二：从本地使用
+
+```bash
+# 1. 复制脚手架到新项目目录
+cp -r cf-pwa your-project-name
+cd your-project-name
+rm -rf .git  # 删除原仓库信息（如果需要）
+
+# 2. 运行初始化脚本（会自动安装依赖）
 npm run init
 ```
 

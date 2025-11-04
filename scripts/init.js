@@ -250,6 +250,44 @@ function replaceInFile(filePath, replacements) {
 async function main() {
   console.log('🚀 开始初始化项目...\n')
 
+  // 0. 前置检查：登录状态
+  console.log('📋 前置检查...')
+  let needsWranglerLogin = false
+  let needsGitHubLogin = false
+
+  if (!checkWranglerLogin()) {
+    console.log('⚠️  Cloudflare (wrangler) 未登录')
+    console.log('💡 如需自动创建 KV Namespace，请先运行: wrangler login')
+    needsWranglerLogin = true
+  } else {
+    console.log('✅ Cloudflare (wrangler) 已登录')
+  }
+
+  if (checkGitHubCLI()) {
+    if (!checkGitHubLogin()) {
+      console.log('⚠️  GitHub CLI 未登录')
+      console.log('💡 如需自动创建 GitHub 仓库，请先运行: gh auth login')
+      needsGitHubLogin = true
+    } else {
+      console.log('✅ GitHub CLI 已登录')
+    }
+  } else {
+    console.log('💡 GitHub CLI 未安装（可选，用于自动创建 GitHub 仓库）')
+  }
+
+  if (needsWranglerLogin || needsGitHubLogin) {
+    console.log('\n💡 提示: 可以继续初始化，稍后手动配置这些选项')
+    const continueAnyway = await question('是否继续初始化? (y/n): ')
+    if (!isYes(continueAnyway)) {
+      console.log('\n👋 初始化已取消')
+      rl.close()
+      process.exit(0)
+    }
+    console.log('')
+  } else {
+    console.log('✅ 所有前置检查通过\n')
+  }
+
   // 1. 询问项目名称
   let projectName = ''
   while (true) {
@@ -275,30 +313,17 @@ async function main() {
   // 3. 处理 KV Namespace ID
   let kvNamespaceId = ''
 
-  // 检查是否已登录 wrangler
-  const isLoggedIn = checkWranglerLogin()
-  if (!isLoggedIn) {
-    console.log('\n⚠️  检测到 wrangler 未登录')
-    console.log('💡 请先运行: wrangler login')
-    console.log('   然后重新运行: npm run init\n')
-    rl.close()
-    process.exit(1)
-  }
-
   // 询问是否要创建新的 KV Namespace
   console.log('\n📦 KV Namespace 配置')
   const createKV = await question(`是否要创建新的 KV Namespace "${kvBindingName}"? (y/n): `)
 
   if (isYes(createKV)) {
-    // 创建 KV Namespace
-    const createdId = await createKVNamespace(kvBindingName)
-    if (createdId) {
-      kvNamespaceId = createdId
-      console.log(`✅ KV Namespace 创建成功！`)
-      console.log(`   ID: ${kvNamespaceId}\n`)
-    } else {
-      // 创建失败，要求手动输入
-      console.log('\n⚠️  无法自动获取 KV Namespace ID')
+    // 检查是否已登录
+    if (!checkWranglerLogin()) {
+      console.log('\n⚠️  wrangler 未登录，无法自动创建 KV Namespace')
+      console.log('💡 请先运行: wrangler login')
+      console.log('   然后手动创建 KV 或重新运行 init 脚本\n')
+      // 要求手动输入
       while (true) {
         kvNamespaceId = await question('请手动输入 KV Namespace ID (十六进制字符串): ')
         const error = validateKVId(kvNamespaceId)
@@ -306,6 +331,25 @@ async function main() {
           break
         }
         console.log(`❌ ${error}\n`)
+      }
+    } else {
+      // 创建 KV Namespace
+      const createdId = await createKVNamespace(kvBindingName)
+      if (createdId) {
+        kvNamespaceId = createdId
+        console.log(`✅ KV Namespace 创建成功！`)
+        console.log(`   ID: ${kvNamespaceId}\n`)
+      } else {
+        // 创建失败，要求手动输入
+        console.log('\n⚠️  无法自动获取 KV Namespace ID')
+        while (true) {
+          kvNamespaceId = await question('请手动输入 KV Namespace ID (十六进制字符串): ')
+          const error = validateKVId(kvNamespaceId)
+          if (!error) {
+            break
+          }
+          console.log(`❌ ${error}\n`)
+        }
       }
     }
   } else {
@@ -324,6 +368,12 @@ async function main() {
   // 4. 处理 GitHub 仓库创建
   console.log('\n🐙 GitHub 仓库配置')
   let githubRepoCreated = false
+  let shouldAutoCommit = false  // 记录是否需要自动提交
+
+  // 先计算项目名称的转换形式（用于后续使用）
+  const projectNameLower = projectName.toLowerCase()
+  const projectNameKebab = projectNameLower.replace(/_/g, '-')
+  const projectNameSnake = projectNameLower.replace(/-/g, '_')
 
   // 检查是否需要初始化 git
   if (!isGitInitialized()) {
@@ -353,9 +403,9 @@ async function main() {
           // 询问仓库名称（默认使用项目名称）
           const repoName = await question(`请输入仓库名称 (默认: ${projectNameKebab}): `) || projectNameKebab
 
-          // 询问是否为私有仓库
-          const isPrivate = await question('是否为私有仓库? (y/n，默认: n): ')
-          const privateRepo = isYes(isPrivate)
+          // 询问是否为私有仓库（默认私有）
+          const isPrivate = await question('是否为私有仓库? (y/n，默认: y): ')
+          const privateRepo = isPrivate.trim() === '' || isYes(isPrivate)
 
           // 询问仓库描述
           const description = await question('请输入仓库描述 (可选): ')
@@ -363,10 +413,9 @@ async function main() {
           githubRepoCreated = await createGitHubRepository(repoName, description.trim(), privateRepo)
 
           if (githubRepoCreated) {
-            console.log('\n💡 下一步:')
-            console.log('   1. 运行: git add .')
-            console.log('   2. 运行: git commit -m "Initial commit"')
-            console.log('   3. 运行: git push -u origin main (或 master)\n')
+            // 询问是否要自动提交首次更新（稍后在配置文件更新后执行）
+            const autoCommit = await question('是否要自动提交并推送首次更新? (y/n，默认: y): ')
+            shouldAutoCommit = autoCommit.trim() === '' || isYes(autoCommit)
           }
         }
       }
@@ -379,13 +428,36 @@ async function main() {
     console.log('✅ 检测到已配置远程仓库，跳过创建\n')
   }
 
+  // 5. 设置 Git Hooks（默认设置）
+  if (isGitInitialized()) {
+    console.log('🔧 Git Hooks 配置')
+    const setupHooks = await question('是否要设置 Git hooks（自动更新 Service Worker 版本号）? (y/n，默认: y): ')
+    const shouldSetupHooks = setupHooks.trim() === '' || isYes(setupHooks)
+
+    if (shouldSetupHooks) {
+      try {
+        console.log('\n📦 正在设置 Git hooks...')
+        execSync('npm run setup:hooks', { stdio: 'inherit' })
+        console.log('✅ Git hooks 设置完成\n')
+      } catch (error) {
+        console.log('⚠️  Git hooks 设置失败，可以稍后手动运行: npm run setup:hooks\n')
+      }
+    } else {
+      console.log('💡 跳过 Git hooks 设置\n')
+    }
+  }
+
   rl.close()
 
-  console.log('\n📝 正在更新配置文件...\n')
+  console.log('\n📦 正在安装依赖...')
+  try {
+    execSync('npm install', { stdio: 'inherit' })
+    console.log('✅ 依赖安装完成\n')
+  } catch (error) {
+    console.log('⚠️  依赖安装失败，请稍后手动运行: npm install\n')
+  }
 
-  const projectNameLower = projectName.toLowerCase()
-  const projectNameKebab = projectNameLower.replace(/_/g, '-')
-  const projectNameSnake = projectNameLower.replace(/-/g, '_')
+  console.log('\n📝 正在更新配置文件...\n')
 
   let successCount = 0
   let failCount = 0
@@ -471,6 +543,32 @@ async function main() {
     failCount++
   }
 
+  // 如果创建了 GitHub 仓库且用户选择了自动提交，现在执行提交
+  if (githubRepoCreated && shouldAutoCommit) {
+    try {
+      console.log('\n📦 正在提交并推送代码...')
+      execSync('git add .', { stdio: 'inherit' })
+      execSync('git commit -m "Initial commit"', { stdio: 'inherit' })
+
+      // 尝试推送，先试试 main 分支，如果失败再试试 master
+      try {
+        execSync('git push -u origin main', { stdio: 'inherit' })
+      } catch (error) {
+        try {
+          execSync('git push -u origin master', { stdio: 'inherit' })
+        } catch (error2) {
+          console.log('⚠️  推送失败，请检查分支名称并手动推送\n')
+        }
+      }
+      console.log('✅ 代码已成功提交并推送\n')
+    } catch (error) {
+      console.log('⚠️  自动提交失败，请稍后手动运行:')
+      console.log('   git add .')
+      console.log('   git commit -m "Initial commit"')
+      console.log('   git push -u origin main (或 master)\n')
+    }
+  }
+
   console.log('\n' + '='.repeat(50))
   if (failCount === 0) {
     console.log(`✅ 初始化完成！已成功更新 ${successCount} 个文件\n`)
@@ -479,15 +577,30 @@ async function main() {
     console.log(`   KV 绑定: ${kvBindingName}`)
     console.log(`   KV Namespace ID: ${kvNamespaceId.trim()}\n`)
     console.log('💡 下一步:')
-    console.log('   1. 检查配置文件是否正确')
-    console.log('   2. 运行 npm install 安装依赖')
+    // 检查是否已经推送过代码
+    let alreadyPushed = false
     if (githubRepoCreated) {
-      console.log('   3. 运行: git add .')
-      console.log('   4. 运行: git commit -m "Initial commit"')
-      console.log('   5. 运行: git push -u origin main (或 master)')
-      console.log('   6. 运行 npm run dev 开始开发\n')
+      try {
+        const branchStatus = execSync('git status -sb', { encoding: 'utf-8', stdio: 'pipe' })
+        if (branchStatus.includes('ahead')) {
+          // 有未推送的提交
+        } else if (branchStatus.includes('up to date') || branchStatus.includes('up-to-date')) {
+          alreadyPushed = true
+        }
+      } catch (error) {
+        // 忽略错误，继续显示提示
+      }
+
+      if (!alreadyPushed) {
+        console.log('   1. 运行: git add .')
+        console.log('   2. 运行: git commit -m "Initial commit"')
+        console.log('   3. 运行: git push -u origin main (或 master)')
+        console.log('   4. 运行 npm run dev 开始开发\n')
+      } else {
+        console.log('   1. 运行 npm run dev 开始开发\n')
+      }
     } else {
-      console.log('   3. 运行 npm run dev 开始开发\n')
+      console.log('   1. 运行 npm run dev 开始开发\n')
     }
   } else {
     console.log(`⚠️  部分文件更新失败，请手动检查\n`)
