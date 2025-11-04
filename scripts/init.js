@@ -473,6 +473,26 @@ async function main() {
     failCount++
   }
 
+  // 更新 package-lock.json（如果存在）
+  const packageLockPath = resolve('package-lock.json')
+  try {
+    readFileSync(packageLockPath, 'utf-8') // 检查文件是否存在
+    console.log('  更新 package-lock.json...')
+    if (replaceInFile(packageLockPath, [
+      { pattern: /"name":\s*"[^"]*"/, replacement: `"name": "${projectNameKebab}"` }
+    ])) {
+      console.log('  ✅ package-lock.json 已更新')
+      successCount++
+    } else {
+      failCount++
+    }
+  } catch (error) {
+    // 文件不存在，跳过（npm install 会自动生成）
+    if (error.code !== 'ENOENT') {
+      console.log(`  ⚠️  跳过 package-lock.json: ${error.message}`)
+    }
+  }
+
   // 更新 wrangler.toml
   console.log('  更新 wrangler.toml...')
   if (replaceInFile(resolve('wrangler.toml'), [
