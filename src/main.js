@@ -7,21 +7,17 @@
  */
 
 import { createApp } from 'vue'
-// import router from './router'
-// import App from './App.vue'
-// import './styles/main.scss'
+import App from './App.vue'
+import './styles/main.scss'
 
-// 示例: 创建基础 Vue 应用
-const app = createApp({
-  template: '<div>Hello from Cloudflare Pages + PWA!</div>'
-})
+// 如果使用路由
+// import router from './router'
+
+// 创建 Vue 应用
+const app = createApp(App)
 
 // 如果使用路由
 // app.use(router)
-
-// PWA 更新管理（可选）
-// import { usePWAUpdate } from '@/composables/usePWAUpdate'
-// const { checkForUpdate } = usePWAUpdate()
 
 app.mount('#app')
 

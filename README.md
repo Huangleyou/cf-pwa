@@ -17,7 +17,7 @@
 
 ```bash
 # 1. 使用 GitHub CLI 创建新项目（推荐）
-gh repo create your-project-name --template Huangleyou/cf-pwa --clone
+gh repo create your-project-name --template Huangleyou/cf-pwa --clone --private
 cd your-project-name
 
 # 2. 运行初始化脚本（会自动安装依赖）
