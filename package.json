@@ -1,0 +1,38 @@
+{
+  "name": "your-project-name",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Vue 3 + Cloudflare Pages + PWA 项目",
+  "main": "index.js",
+  "scripts": {
+    "init": "node scripts/init.js",
+    "prebuild": "node scripts/update-sw-version.js",
+    "build": "vite build",
+    "dev": "./dev.sh",
+    "dev:remote": "./dev.sh --remote",
+    "version": "node scripts/update-sw-version.js",
+    "setup:hooks": "./scripts/setup-git-hooks.sh",
+    "pages:deploy": "wrangler pages deploy dist"
+  },
+  "dependencies": {
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "sass": "^1.64.1",
+    "vite": "^4.4.5",
+    "wrangler": "^4.45.1"
+  },
+  "keywords": [
+    "vue3",
+    "cloudflare",
+    "pwa",
+    "pages"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

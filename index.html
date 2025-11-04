@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="应用描述">
+  <meta name="keywords" content="关键词">
+
+  <!-- PWA 移动端支持 -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="App">
+
+  <title>Your App Name</title>
+
+  <link rel="manifest" href="/manifest.json">
+  <!-- TODO: 添加 favicon 链接 -->
+  <!-- <link rel="icon" type="image/x-icon" href="/favicon/favicon.ico"> -->
+
+  <!-- 防止启动时白屏 -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+      background: #ffffff;
+    }
+    #app {
+      width: 100%;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+
